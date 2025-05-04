@@ -1,32 +1,29 @@
 # Game of Life for Feature Evolution (GOLF evolution)
-Evolving MCTS Agent Parameters
+Evolving Monte Carlo Tree Search (MCTS) Agent Parameters
 [Download or view the simulation video](GOLF.mp4)  
 **Author:** Nate Ly  
 ## Running Program
+**Main Program** - runs simulation with live graphs and cell grid
 ```bash
 python3 life.py
 ```
-**OR**
+**Final Agent Comparisons** - shows comparisons of agents
 ```bash
-make
-./GOLF
+python3 compare.py
 ```
 **Output**
 
-For each generation average constants and performance is printed in terminal and saved in .cvs files which can later be graphed
-```
-python3 plot.py
-```
+For each generation average constants and performance is printed in terminal and saved in .csv files which can later be graphed by running plot.py
 
-Live game grid and graphs tracking constants shown using Matplotlib 
 ## The Question  
-Using a game of life simulation-ish simulation, can we evolve a population to play the game better?  
+
+Using a game of life simulation-ish simulation, can we evolve a population to use better MCTS parameters?
 
 ## Motivation  
 
 Using a model similar to Conway's Game of Life, where each cell is an agent that plays the game differently, we want to see how the population evolves over time.  
 
-Incorporating some elements from genetic algorithms and reinforcement learning, we can see if we can nudge the population into tuning for evolving for better parameters  
+Incorporating some elements from genetic algorithms and reinforcement learning, we can see if we can nudge the population into tuning for evolving for better parameters using results only from the population (ie. no minimax comparisons during simulation)
 
 ## Agents as MCTS Players  
 
@@ -68,7 +65,7 @@ Each cell is a MCTS agent with the following parameters:
   - Fitness Decay with each Generation = 0  
   - Epsilon = 0.1  
   - Max Mutation Percent = 0.15  
-- Agent Parameters
+- Default Agent Parameters
   - UCT Constant = sqrt(2)
   - Rollouts = 50  
   - Max search depth = 4  
@@ -78,9 +75,9 @@ Each cell is a MCTS agent with the following parameters:
 ## Performance Tracking  
 At the end of each generation we collect:  
 - Average MCTS Parameters  
-- Population mean win rate against original agent  
-- Fiittest agent's win rate  
-- Best performer's win rate  
+- Population mean win rate against default agent  
+- Fiittest agent's win rate against default agent
+- Best performer's win rate against default agent
 
 This is stored in simulation_data folder
 
@@ -111,5 +108,5 @@ Net score: -0.2222
 Wins: 46.96%
 
 ## Results
-By running a cellular evolution simulation on MCTS Agents, we were able to evolve a population based on the defaul agent that performs better against a full Minimax search than the default by a 3.315% winrate and 0.1104 point margin
+By running a cellular evolution simulation on MCTS Agents, we were able to evolve a population based on the default agent that performs better against a full Minimax search than the default by a 3.315% winrate and 0.1104 point margin
 
