@@ -17,7 +17,7 @@ For each generation average constants and performance is printed in terminal and
 
 ## The Question  
 
-Using a game of life simulation-ish simulation, can we evolve a population to use better MCTS parameters?
+Using a Game of Life inspired simulation, can we evolve a population of MCTS agents to tune for better performance?
 
 ## Motivation  
 
