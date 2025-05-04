@@ -8,26 +8,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 from helpers import draw, get_average_parameters
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from helpers import print_results, save_data_to_csv
 import csv
 import os
-def save_data_to_csv(filename, headers, data_rows):
-    os.makedirs("simulation_data", exist_ok=True)
-    with open(os.path.join("simulation_data", filename), mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(headers)
-        writer.writerows(data_rows)
+from kalah import Kalah
+
 
 random.seed(420)
+game = PeggingGame(4)
 C = math.sqrt(2)
 grid_size = 8
 density = 0.5
-n_games = 500
+n_games = 250 # 100
 decay = 0 # 0.1
 epsilon = 0.1
 mutation_rate = 0.15
-time_limit = 0.001
-rollouts = 50
-max_depth = 4
+time_limit = 0.005
+rollouts = 50 # 50
+max_depth = 4 # 4 
 child_fitness = 0 # 0.5
 def make_agent_dict():
     default= {
@@ -115,8 +113,7 @@ def _eval_matchup(args):
     (i1, j1), (i2, j2), agent1_dict, agent2_dict = args
     agent1 = MCTSAGENT(**{k: agent1_dict[k] for k in agent1_dict if k != "fitness"})
     agent2 = MCTSAGENT(**{k: agent2_dict[k] for k in agent2_dict if k != "fitness"})
-    game = PeggingGame(4)
-    margin, wins = test_game(game, n_games, agent1.policy, agent2.policy)
+    margin, _ = test_game(game, n_games, agent1.policy, agent2.policy)
     return i1, j1, i2, j2, margin
 
 
@@ -127,7 +124,7 @@ def run_comp(max_workers=None):
     args = []
     for (i1, j1), (i2, j2) in matchups:
         if not (isinstance(grid[i1][j1], dict) and isinstance(grid[i2][j2], dict)):
-            continue  # skip invalid or removed agents
+            continue  
         args.append(((i1, j1), (i2, j2), grid[i1][j1], grid[i2][j2]))
 
     with ProcessPoolExecutor(max_workers=max_workers) as exe:
@@ -187,11 +184,7 @@ def repopulate_grid(grid, e=epsilon, mutation_rate=mutation_rate, best_performer
             # Use the best performing agent as parent when available
             parent = best_performer
         else:
-            # Fall back to random or fittest neighbor
-            if random.random() < e:
-                parent = random.choice(neighbours)
-            else:
-                parent = max(neighbours, key=lambda d: d.get("fitness", 0))
+            parent = max(neighbours, key=lambda d: d.get("fitness", 0))
 
         # copy parameters with mutation
         child = {
@@ -205,7 +198,18 @@ def repopulate_grid(grid, e=epsilon, mutation_rate=mutation_rate, best_performer
         }
 
         grid[i][j] = child
-        
+def _eval_agent_performance(args):
+    agent_dict, default_agent_dict = args
+    # Create a temporary agent from the dict
+    agent = MCTSAGENT(**{k: agent_dict[k] for k in agent_dict if k != "fitness"})
+    default_agent = MCTSAGENT(**default_agent_dict)
+    
+    # Run the test game
+    margin, winrate = test_game(game, n_games, agent.policy, default_agent.policy)
+    current_winrate = winrate * 100
+    
+    return agent_dict, current_winrate
+
 
 def live_simulation(iterations):
     plt.ion()
@@ -228,6 +232,37 @@ def live_simulation(iterations):
     default_agent = MCTSAGENT(time_limit=time_limit, constant=C, rollouts=rollouts, 
                              max_depth=max_depth, weight=1, decay=1)
 
+
+    def parallel_agent_testing(current_agents, default_agent):
+        # Convert default agent to a dictionary for serialization
+        default_agent_dict = {
+            "time_limit": default_agent.time_limit,
+            "constant": default_agent.constant,
+            "rollouts": default_agent.rollouts,
+            "max_depth": default_agent.max_depth,
+            "weight": default_agent.weight,
+            "decay": default_agent.decay
+        }
+        
+        args = [(agent_dict, default_agent_dict) for agent_dict in current_agents]
+        
+        all_winrates = []
+        best_winrate = 0
+        best_agent = None
+        
+        with ProcessPoolExecutor(max_workers=None) as exe:
+            futures1 = {exe.submit(_eval_agent_performance, arg): arg for arg in args}
+            for fut1 in as_completed(futures1):
+                agent_dict, current_winrate = fut1.result()
+                all_winrates.append(current_winrate)
+                
+                # Track best performing agent
+                if current_winrate > best_winrate:
+                    best_winrate = current_winrate
+                    best_agent = agent_dict
+        
+        return all_winrates, best_winrate, best_agent
+
     for gen in range(iterations):
         generations.append(gen + 1)
         
@@ -235,7 +270,7 @@ def live_simulation(iterations):
         draw(grid, fig, title=f"Gen {gen+1}", ax_grid=ax_grid)
         run_comp()
         run_elimination()
-        
+         
         # 2) Get parameter averages
         params = get_average_parameters(grid)
         avg_rollouts.append(params['rollouts'])
@@ -247,36 +282,14 @@ def live_simulation(iterations):
         # 3) Performance comparison testing
         current_agents = [cell for row in grid for cell in row if isinstance(cell, dict)]
         if current_agents:
-            # Test ALL agents against default (with reduced games per agent)
-            all_winrates = []
-            best_winrate = 0
-            best_agent = None
             fittest_agent = max(current_agents, key=lambda x: x.get("fitness", 0))
             
-            for agent_dict in current_agents:
-                agent = MCTSAGENT(**{k: agent_dict[k] for k in agent_dict if k != "fitness"})
-                margin, winrate = test_game(
-                    PeggingGame(4), 
-                    n_games, 
-                    agent.policy, 
-                    default_agent.policy
-                )
-                current_winrate = winrate * 100
-                all_winrates.append(current_winrate)
-                
-                # Track best performing agent
-                if current_winrate > best_winrate:
-                    best_winrate = current_winrate
-                    best_agent = agent_dict
+            # Parallel testing of all agents
+            all_winrates, best_winrate, best_agent = parallel_agent_testing(current_agents, default_agent)
             
             # Test fittest agent (by fitness score) with more games
             fittest_agent_obj = MCTSAGENT(**{k: fittest_agent[k] for k in fittest_agent if k != "fitness"})
-            _, fittest_winrate = test_game(
-                PeggingGame(4), 
-                n_games, 
-                fittest_agent_obj.policy, 
-                default_agent.policy
-            )
+            _, fittest_winrate = test_game(game, n_games, fittest_agent_obj.policy, default_agent.policy)
             
             # Store results
             all_agents_avg.append(sum(all_winrates)/len(all_winrates))
@@ -300,7 +313,6 @@ def live_simulation(iterations):
             ax_compare.legend()
             ax_compare.grid(True)
 
-
         ax_rollouts.clear()
         ax_rollouts.plot(generations, avg_rollouts, 'b-')
         ax_rollouts.set_title('Average Rollouts per Generation')
@@ -322,18 +334,10 @@ def live_simulation(iterations):
         ax_weight_decay.set_title('Weight and Decay Parameters')
         ax_weight_decay.legend()
         ax_weight_decay.grid(True)
-        fittest_agent = max(current_agents, key=lambda x: x.get("fitness", 0))
+        
         repopulate_grid(grid, best_performer=best_agent)
         
-        print("Generation %d completed" % (gen + 1))
-        print("Average Rollouts:", avg_rollouts[-1])
-        print("Average Constant:", avg_constants[-1])
-        print("Average Max Depth:", avg_depths[-1])
-        print("Average Weight:", avg_weights[-1])
-        print("Average Decay:", avg_decays[-1])
-        print("Population Avg Performance:", all_agents_avg[-1])
-        print("Fittest Agent Performance:", fittest_agent_perf[-1])
-        print("Best Performing Agent Performance:", best_performing_perf[-1])
+        print_results(gen, avg_rollouts, avg_constants, avg_depths, avg_weights, avg_decays, all_agents_avg, fittest_agent_perf, best_performing_perf)
         
     save_data_to_csv("performance_vs_default.csv",
                      ["Generation", "Population_Avg", "Fittest_Agent", "Best_Performer"],
@@ -345,9 +349,8 @@ def live_simulation(iterations):
 
     plt.ioff()
     plt.show()
-
 if __name__ == "__main__":
-    live_simulation(iterations=10)
+    live_simulation(iterations=100)
     max_fitness = 0
     max_agent = None
     for i in range(len(grid)):

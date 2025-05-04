@@ -7,7 +7,6 @@ C = math.sqrt(2)
 import random
 from peg_game import PeggingGame
 
-
 def compare_policies(game, p1, p2, games):
     p1_wins = 0
     p2_wins = 0
@@ -43,7 +42,8 @@ def test_game(game, count, p1_policy_fxn, p2_policy_fxn):
 
     # print("NET: ", margin, "; WINS: ", wins, sep="")
     return margin, wins
-    
+
+
 
 if __name__ == '__main__':
     start = time.time()

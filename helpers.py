@@ -1,7 +1,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os
+import csv
 def draw(grid, fig, title=None, ax_grid=None):
     presence = np.zeros((len(grid), len(grid)))
     fitness = np.zeros((len(grid), len(grid)))
@@ -57,4 +58,20 @@ def get_average_parameters(grid):
         'decay': sum(agent['decay'] for agent in agents) / len(agents)
     }
 
-
+def print_results(gen, avg_rollouts, avg_constants, avg_depths, avg_weights, avg_decays, all_agents_avg, fittest_agent_perf, best_performing_perf):
+        print("Generation %d completed" % (gen + 1))
+        print("Average Rollouts:", avg_rollouts[-1])
+        print("Average Constant:", avg_constants[-1])
+        print("Average Max Depth:", avg_depths[-1])
+        print("Average Weight:", avg_weights[-1])
+        print("Average Decay:", avg_decays[-1])
+        print("Population Avg Performance:", all_agents_avg[-1])
+        print("Fittest Agent Performance:", fittest_agent_perf[-1])
+        print("Best Performing Agent Performance:", best_performing_perf[-1])
+        
+def save_data_to_csv(filename, headers, data_rows):
+    os.makedirs("simulation_data", exist_ok=True)
+    with open(os.path.join("simulation_data", filename), mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+        writer.writerows(data_rows)
