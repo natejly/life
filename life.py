@@ -13,13 +13,13 @@ C = math.sqrt(2)
 grid_size = 8
 density = 0.5
 n_games = 500
-decay = 0
+decay = 0 # 0.1
 epsilon = 0.1
 mutation_rate = 0.15
 time_limit = 0.001
 rollouts = 50
 max_depth = 4
-child_fitness = 0.0
+child_fitness = 0 # 0.5
 def make_agent_dict():
     default= {
         "time_limit": time_limit,
@@ -192,10 +192,11 @@ def repopulate_grid(grid, e=epsilon, mutation_rate=mutation_rate, best_performer
             "max_depth": max(1, int(parent["max_depth"] * (1 + random.normalvariate(0, mutation_rate)))),
             "weight": parent["weight"] * (1 + random.normalvariate(0, mutation_rate)),
             "decay": parent["decay"] * (1 + random.normalvariate(0, mutation_rate)),
-            "fitness": 0.0
+            "fitness": child_fitness
         }
 
         grid[i][j] = child
+        
 
 def live_simulation(iterations):
     plt.ion()
@@ -286,7 +287,7 @@ def live_simulation(iterations):
                 f"Fittest={fittest_agent_perf[-1]:.1f}%, "
                 f"Best={best_performing_perf[-1]:.1f}%"
             )
-            ax_compare.set_ylim(20, 100)
+            ax_compare.set_ylim(40, 70)
             ax_compare.legend()
             ax_compare.grid(True)
 
@@ -312,15 +313,14 @@ def live_simulation(iterations):
         ax_weight_decay.set_title('Weight and Decay Parameters')
         ax_weight_decay.legend()
         ax_weight_decay.grid(True)
-
+        fittest_agent = max(current_agents, key=lambda x: x.get("fitness", 0))
         repopulate_grid(grid, best_performer=best_agent)
-        # repopulate_grid(grid)
 
     plt.ioff()
     plt.show()
 
 if __name__ == "__main__":
-    live_simulation(iterations=100)
+    live_simulation(iterations=1000)
     max_fitness = 0
     max_agent = None
     for i in range(len(grid)):

@@ -41,16 +41,6 @@ def draw(grid, fig, title=None, ax_grid=None):
     ax_grid.set_xticks([])
     ax_grid.set_yticks([])
     
-    if not hasattr(ax_grid, 'cbar'):
-        ax_grid.cbar = plt.colorbar(
-            plt.cm.ScalarMappable(norm=norm, cmap=cmap),
-            ax=ax_grid, 
-            orientation='vertical'
-        )
-        ax_grid.cbar.set_label('Fitness')
-    else:
-        ax_grid.cbar.update_normal(plt.cm.ScalarMappable(norm=norm, cmap=cmap))
-    
     if title:
         ax_grid.set_title(title)
         
