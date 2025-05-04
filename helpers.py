@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import csv
+# had GPT help me with visualization aesthetics
 def draw(grid, fig, title=None, ax_grid=None):
     presence = np.zeros((len(grid), len(grid)))
     fitness = np.zeros((len(grid), len(grid)))

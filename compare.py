@@ -28,7 +28,6 @@ class TESTAGENT():
     def policy(self):
         return self.policy_generator
 
-
 def compare_policies(game, p1, p2, games):
     p1_wins = 0
     p2_wins = 0

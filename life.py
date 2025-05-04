@@ -43,6 +43,7 @@ def make_grid(size, spawn_chance):
         for j in range(size):
             if random.random() <= spawn_chance:
                 grid[i][j] = make_agent_dict()
+                
     return grid
 
 grid = make_grid(grid_size, density)
@@ -84,7 +85,9 @@ def grid_to_agent(i,j):
             weight = value
         elif key == "decay":
             decay = value
+            
     agent = MCTSAGENT(time_limit, constant, rollouts, max_depth, weight, decay)
+    
     return agent
 
 
@@ -92,6 +95,7 @@ def get_matchups(grid):
     # get every uniqie pair of populated cells that are touching
     num_rows = num_cols = len(grid)
     pairs = set()
+    
     for i in range(num_rows):
         for j in range(num_cols):
             if grid[i][j] == 0:
@@ -100,6 +104,7 @@ def get_matchups(grid):
                 for y in (-1, 0, 1):
                     if x == 0 and y == 0:
                         continue
+                    
                     ni, nj = i + x, j + y
                     # check bounds
                     if 0 <= ni < num_rows and 0 <= nj < num_rows and grid[ni][nj] != 0:
@@ -119,11 +124,13 @@ def run_comp(max_workers=None):
     matchups = get_matchups(grid)
     # Build argument list with agent data
     args = []
+    
     for (i1, j1), (i2, j2) in matchups:
         if not (isinstance(grid[i1][j1], dict) and isinstance(grid[i2][j2], dict)):
             continue  
         args.append(((i1, j1), (i2, j2), grid[i1][j1], grid[i2][j2]))
-
+        
+    #GPT help with parallelization for faster simulating
     with ProcessPoolExecutor(max_workers=max_workers) as exe:
         futures = {exe.submit(_eval_matchup, arg): arg for arg in args}
         for fut in as_completed(futures):
@@ -136,6 +143,7 @@ def run_elimination():
     for i in range(len(grid)):
         for j in range(len(grid)):
             cell = grid[i][j]
+            
             # only check "fitness" if this is still an agent dict
             if isinstance(cell, dict):
                 grid[i][j]["fitness"] -= decay
@@ -177,6 +185,7 @@ def repopulate_grid(grid, e=epsilon, mutation_percent=mutation_percent, best_per
             parent = best_performer
         else:
             parent = max(neighbours, key=lambda d: d.get("fitness", 0))
+            
         # copy parameters with mutation
         child = {
             "time_limit": parent["time_limit"],
@@ -187,8 +196,9 @@ def repopulate_grid(grid, e=epsilon, mutation_percent=mutation_percent, best_per
             "decay": parent["decay"] * (1 + random.normalvariate(0, mutation_percent)),
             "fitness": child_fitness
         }
-
+        
         grid[i][j] = child
+        
 def _against_base(args):
     agent_dict, default_agent_dict = args
     agent = MCTSAGENT(**{k: agent_dict[k] for k in agent_dict if k != "fitness"})
@@ -221,7 +231,7 @@ def run(iterations):
                              max_depth=max_depth, weight=1, decay=1)
 
 
-    def parallel_agent_testing(current_agents, default_agent):
+    def test_agents(current_agents, default_agent):
         # Convert default agent to a dictionary for serialization
         default_agent_dict = {
             "time_limit": default_agent.time_limit,
@@ -238,6 +248,7 @@ def run(iterations):
         best_winrate = 0
         best_agent = None
         
+        #GPT help with parallelization for faster simulating
         with ProcessPoolExecutor(max_workers=None) as exe:
             futures1 = {exe.submit(_against_base, arg): arg for arg in args}
             for fut1 in as_completed(futures1):
@@ -268,7 +279,7 @@ def run(iterations):
         if current_agents:
             fittest_agent = max(current_agents, key=lambda x: x.get("fitness", 0))
             
-            all_winrates, best_winrate, best_agent = parallel_agent_testing(current_agents, default_agent)
+            all_winrates, best_winrate, best_agent = test_agents(current_agents, default_agent)
             
             fittest_agent_obj = MCTSAGENT(**{k: fittest_agent[k] for k in fittest_agent if k != "fitness"})
             _, fittest_winrate = test_game(game, n_games, fittest_agent_obj.policy, default_agent.policy)
@@ -276,7 +287,7 @@ def run(iterations):
             all_agents_avg.append(sum(all_winrates)/len(all_winrates))
             fittest_agent_perf.append(fittest_winrate * 100)
             best_performing_perf.append(best_winrate)
-            
+            # copilot help with plotting
             ax_compare.clear()
             ax_compare.plot(generations, all_agents_avg, 'b-', label='Population Avg')
             ax_compare.plot(generations, fittest_agent_perf, 'r-', label='Fittest Agent')
@@ -292,7 +303,7 @@ def run(iterations):
             ax_compare.set_ylim(40, 70)
             ax_compare.legend()
             ax_compare.grid(True)
-
+        # copilot help with plotting
         ax_rollouts.clear()
         ax_rollouts.plot(generations, avg_rollouts, 'b-')
         ax_rollouts.set_title('Average Rollouts per Generation')
