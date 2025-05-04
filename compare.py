@@ -5,6 +5,29 @@ import math
 C = math.sqrt(2)
 import random
 from peg_game import PeggingGame
+from mcts import mcts_policy
+import minimax as minimax
+class TESTAGENT():
+    def __init__(self, time_limit=None, constant=None, rollouts=None, max_depth=None, weight=None, decay=None):
+        self.time_limit = time_limit
+        self.constant = constant
+        self.rollouts = rollouts
+        self.max_depth = max_depth
+        self.weight = weight
+        self.decay = decay
+
+        self.policy_generator = mcts_policy(
+            limit=self.time_limit,
+            constant=self.constant, 
+            rollouts=self.rollouts, 
+            max_depth=self.max_depth, 
+            weight=self.weight, 
+            decay=self.decay
+        )
+    
+    def policy(self):
+        return self.policy_generator
+
 
 def compare_policies(game, p1, p2, games):
     p1_wins = 0
@@ -43,10 +66,22 @@ def test_game(game, count, p1_policy_fxn, p2_policy_fxn):
     return margin, wins
 
 if __name__ == '__main__':
-    start = time.time()
+    time_limit = 0.005
     game = PeggingGame(4)
-    num_games = 1000
-    mctspolicy1 = mcts.mcts_policy
-    mctspolicy2 = mcts.mcts_policy
-    test_game(game, num_games, mctspolicy1, mctspolicy2)
-    print("Time taken: ", time.time() - start)
+    num_games = 10000
+    h = (lambda pos: pos.score()[0] - pos.score()[1])
+    time_limit = 0.005
+    default = TESTAGENT(time_limit=0.005, constant=C, rollouts=50, max_depth=4, weight=1, decay=1)
+    population = TESTAGENT(time_limit=0.005, constant=1.044465166456834, rollouts=125.23529411764706, max_depth=2.6176470588235294, weight=0.7355062877045861, decay=1.0833588282288886)
+
+    margin, wins = compare_policies(game, population.policy, default.policy, num_games)
+    print("Population vs Default")
+    print("NET: ", margin, "; WINS: ", wins, sep="")
+    margin, wins = compare_policies(game, default.policy, lambda: minimax.minimax_policy(14, minimax.Heuristic(h)), num_games)
+    print("Default vs Minimax")
+    print("NET: ", margin, "; WINS: ", wins, sep="")
+    margin, wins = compare_policies(game, population.policy, lambda: minimax.minimax_policy(14, minimax.Heuristic(h)), num_games)
+    print("Default vs Minimax")
+    print("NET: ", margin, "; WINS: ", wins, sep="")
+    
+
