@@ -8,18 +8,41 @@ import numpy as np
 from helpers import draw, get_average_parameters
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-random.seed(100)
+random.seed(420)
 C = math.sqrt(2)
 grid_size = 8
 density = 0.5
-n_games = 100
-decay = 0.05
+n_games = 500
+decay = 0
 epsilon = 0.1
-mutation_rate = 0.05
-time_limit = 0.005
-rollouts = 100
+mutation_rate = 0.15
+time_limit = 0.001
+rollouts = 50
 max_depth = 4
 child_fitness = 0.0
+def make_agent_dict():
+    default= {
+        "time_limit": time_limit,
+        "constant": C,
+        "rollouts": rollouts,
+        "max_depth": max_depth,
+        "weight": 1,
+        "decay": 1,
+        "fitness": child_fitness
+    }
+    return default
+
+def make_grid(size, spawn_chance):
+    grid = [[0 for _ in range(size)] for _ in range(size)]
+    for i in range(size):
+        for j in range(size):
+            if random.random() <= spawn_chance:
+                # they are all the same right now
+                grid[i][j] = make_agent_dict()
+    return grid
+
+grid = make_grid(grid_size, density)
+
 class MCTSAGENT():
     def __init__(self, time_limit=None, constant=None, rollouts=None, max_depth=None, weight=None, decay=None):
         self.time_limit = time_limit
@@ -41,29 +64,9 @@ class MCTSAGENT():
     def policy(self):
         return self.policy_generator
 
-def make_agent_dict(jitter=0.1):
-    default= {
-        "time_limit": time_limit,
-        "constant": C,
-        "rollouts": rollouts,
-        "max_depth": max_depth,
-        "weight": 1,
-        "decay": 1,
-        "fitness": child_fitness
-    }
-    agent = {}
-    for key, val in default.items():
-        if key == "fitness":
-            agent[key] = val
-        else:
-            # relative jitter
-            jitter = 1 + random.uniform(-jitter, jitter)
-            jittered = val * jitter
-            agent[key] = jittered
-    return agent
 
 def grid_to_agent(i,j):
-    d = make_agent_dict()
+    d = grid[i][j]
     for key, value in d.items():
         if key == "time_limit":
             time_limit = value
@@ -80,14 +83,6 @@ def grid_to_agent(i,j):
     agent = MCTSAGENT(time_limit, constant, rollouts, max_depth, weight, decay)
     return agent
 
-def make_grid(size, spawn_chance):
-    grid = [[0 for _ in range(size)] for _ in range(size)]
-    for i in range(size):
-        for j in range(size):
-            if random.random() <= spawn_chance:
-                # they are all the same right now
-                grid[i][j] = make_agent_dict()
-    return grid
 
 def get_matchups(grid):
     # get every uniqie pair of populated cells that are touching
@@ -108,24 +103,31 @@ def get_matchups(grid):
     return list(pairs)
 
 def _eval_matchup(args):
-    """Worker: unpack coords, rebuild agents, run game, return fitness delta."""
-    (i1, j1), (i2, j2) = args
-    agent1 = grid_to_agent(i1, j1)
-    agent2 = grid_to_agent(i2, j2)
+    (i1, j1), (i2, j2), agent1_dict, agent2_dict = args
+    agent1 = MCTSAGENT(**{k: agent1_dict[k] for k in agent1_dict if k != "fitness"})
+    agent2 = MCTSAGENT(**{k: agent2_dict[k] for k in agent2_dict if k != "fitness"})
     game = PeggingGame(4)
-    margin, wins = test_game(game, 100, agent1.policy, agent2.policy)
+    margin, wins = test_game(game, n_games, agent1.policy, agent2.policy)
     return i1, j1, i2, j2, margin
+
 
 def run_comp(max_workers=None):
     matchups = get_matchups(grid)
-    # Dispatch all matchups in parallel
+
+    # Build argument list with agent data
+    args = []
+    for (i1, j1), (i2, j2) in matchups:
+        if not (isinstance(grid[i1][j1], dict) and isinstance(grid[i2][j2], dict)):
+            continue  # skip invalid or removed agents
+        args.append(((i1, j1), (i2, j2), grid[i1][j1], grid[i2][j2]))
+
     with ProcessPoolExecutor(max_workers=max_workers) as exe:
-        futures = {exe.submit(_eval_matchup, pair): pair for pair in matchups}
+        futures = {exe.submit(_eval_matchup, arg): arg for arg in args}
         for fut in as_completed(futures):
             i1, j1, i2, j2, margin = fut.result()
-            # Main process updates the shared grid
             grid[i1][j1]["fitness"] += margin
             grid[i2][j2]["fitness"] -= margin
+
 
         
 def run_elimination():
@@ -312,12 +314,12 @@ def live_simulation(iterations):
         ax_weight_decay.grid(True)
 
         repopulate_grid(grid, best_performer=best_agent)
+        # repopulate_grid(grid)
 
     plt.ioff()
     plt.show()
 
 if __name__ == "__main__":
-    grid = make_grid(grid_size, density)
     live_simulation(iterations=100)
     max_fitness = 0
     max_agent = None
