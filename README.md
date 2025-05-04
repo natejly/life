@@ -84,29 +84,29 @@ This is stored in simulation_data folder
 ## Results
 ![Final Simulation Plot](final_simulation_plot.png)
 
-Simulating for 100 generations and extracted from the CSV, the final population had:
+**Simulated for 100 generations** and extracted from the CSV, the final population had:
 
 - Average Agent Parameters
-  - UCT Constant = 1.044465166456834
-  - Rollouts = 125.23529411764706
-  - Max search depth = 2.6176470588235294
-  - BP weight = 0.7355062877045861
-  - BP decay = 1.0833588282288886
+  - **UCT Constant** = 1.044465166456834
+  - **Rollouts** = 125.23529411764706
+  - **Max search depth** = 2.6176470588235294
+  - **BP weight** = 0.7355062877045861
+  - **BP decay** = 1.0833588282288886
 
 A comparison over 100,000 games for consistency in compare.py shows
 
-Population Mean vs Default Agent
+**Population Mean vs Default Agent**
 Net score: 0.1654
 Winrate : 54.515%
 
-Default Agent vs Minimax 
+**Default Agent vs Minimax** 
 Net score: -0.3326
 Winrate : 43.645%
 
-Population Mean vs Minimax
+**Population Mean vs Minimax**
 Net score: -0.2222
 Wins: 46.96%
 
 ## Conclusion
-By running a cellular evolution simulation on MCTS Agents, we were able to evolve a population based on the default agent that performs better against a full Minimax search than the default by a 3.315% winrate and 0.1104 point margin
+By running a cellular evolution simulation on MCTS Agents, we were able to evolve a population based on the default agent that performs better against a full Minimax search than the default by a **3.315% winrate** and **0.1104 point margin**
 
