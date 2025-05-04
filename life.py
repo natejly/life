@@ -5,27 +5,26 @@ from peg_game import PeggingGame
 import math
 import random
 import matplotlib.pyplot as plt
-import numpy as np
 from helpers import draw, get_average_parameters
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from helpers import print_results, save_data_to_csv
-import csv
-import os
 
 
-random.seed(420)
+# --------------- Parameters ----------------
+random.seed(420) 
 game = PeggingGame(4)
-C = math.sqrt(2)
-grid_size = 8
-density = 0.5
-n_games = 250 # 100
-decay = 0 # 0.1
-epsilon = 0.1
-mutation_rate = 0.15
-time_limit = 0.005
-rollouts = 50 # 50
-max_depth = 4 # 4 
-child_fitness = 0 # 0.5
+C = math.sqrt(2) # default math.sqrt(2)
+grid_size = 8 # default 8
+density = 0.5 # default 0.5
+n_games = 250 # default 250
+decay = 0 # default 0
+epsilon = 0.1 # default 0.1
+mutation_percent = 0.15 # default 0.15
+time_limit = 0.005 # default 0.005
+rollouts = 50 # default 50
+max_depth = 4 # default 4
+child_fitness = 0 # default 0
+# --------------------------------------------
 def make_agent_dict():
     default= {
         "time_limit": time_limit,
@@ -43,7 +42,6 @@ def make_grid(size, spawn_chance):
     for i in range(size):
         for j in range(size):
             if random.random() <= spawn_chance:
-                # they are all the same right now
                 grid[i][j] = make_agent_dict()
     return grid
 
@@ -103,6 +101,7 @@ def get_matchups(grid):
                     if x == 0 and y == 0:
                         continue
                     ni, nj = i + x, j + y
+                    # check bounds
                     if 0 <= ni < num_rows and 0 <= nj < num_rows and grid[ni][nj] != 0:
                         if (i, j) < (ni, nj):
                             pairs.add(((i, j), (ni, nj)))
@@ -154,7 +153,7 @@ def run_elimination():
                 grid[i][j] = 0
     
 
-def repopulate_grid(grid, e=epsilon, mutation_rate=mutation_rate, best_performer=None):
+def repopulate_grid(grid, e=epsilon, mutation_percent=mutation_percent, best_performer=None):
     rows, cols = len(grid), len(grid[0])
     births = []
 
@@ -188,11 +187,11 @@ def repopulate_grid(grid, e=epsilon, mutation_rate=mutation_rate, best_performer
         # copy parameters with mutation
         child = {
             "time_limit": parent["time_limit"],
-            "constant": parent["constant"] * (1 + random.normalvariate(0, mutation_rate)),
-            "rollouts": max(1, int(parent["rollouts"] * (1 + random.normalvariate(0, mutation_rate)))),
-            "max_depth": max(1, int(parent["max_depth"] * (1 + random.normalvariate(0, mutation_rate)))),
-            "weight": parent["weight"] * (1 + random.normalvariate(0, mutation_rate)),
-            "decay": parent["decay"] * (1 + random.normalvariate(0, mutation_rate)),
+            "constant": parent["constant"] * (1 + random.normalvariate(0, mutation_percent)),
+            "rollouts": max(1, int(parent["rollouts"] * (1 + random.normalvariate(0, mutation_percent)))),
+            "max_depth": max(1, int(parent["max_depth"] * (1 + random.normalvariate(0, mutation_percent)))),
+            "weight": parent["weight"] * (1 + random.normalvariate(0, mutation_percent)),
+            "decay": parent["decay"] * (1 + random.normalvariate(0, mutation_percent)),
             "fitness": child_fitness
         }
 
