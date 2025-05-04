@@ -41,7 +41,7 @@ def test_game(game, count, p1_policy_fxn, p2_policy_fxn):
 
     margin, wins = compare_policies(game, p1_policy_fxn, p2_policy_fxn, count)
 
-    print("NET: ", margin, "; WINS: ", wins, sep="")
+    # print("NET: ", margin, "; WINS: ", wins, sep="")
     return margin, wins
     
 

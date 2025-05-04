@@ -1,3 +1,4 @@
+# add feature that stores data from graph so we can see it 
 from mcts import mcts_policy
 from compare import test_game
 from peg_game import PeggingGame
@@ -7,6 +8,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from helpers import draw, get_average_parameters
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import csv
+import os
+def save_data_to_csv(filename, headers, data_rows):
+    os.makedirs("simulation_data", exist_ok=True)
+    with open(os.path.join("simulation_data", filename), mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+        writer.writerows(data_rows)
 
 random.seed(420)
 C = math.sqrt(2)
@@ -145,7 +154,7 @@ def run_elimination():
             cell = grid[i][j]
             # only check "fitness" if this is still an agent dict
             if isinstance(cell, dict) and cell.get("fitness", 0) < 0:
-                print("removing cell at", i, j)
+                # print("removing cell at", i, j)
                 grid[i][j] = 0
     
 
@@ -315,12 +324,30 @@ def live_simulation(iterations):
         ax_weight_decay.grid(True)
         fittest_agent = max(current_agents, key=lambda x: x.get("fitness", 0))
         repopulate_grid(grid, best_performer=best_agent)
+        
+        print("Generation %d completed" % (gen + 1))
+        print("Average Rollouts:", avg_rollouts[-1])
+        print("Average Constant:", avg_constants[-1])
+        print("Average Max Depth:", avg_depths[-1])
+        print("Average Weight:", avg_weights[-1])
+        print("Average Decay:", avg_decays[-1])
+        print("Population Avg Performance:", all_agents_avg[-1])
+        print("Fittest Agent Performance:", fittest_agent_perf[-1])
+        print("Best Performing Agent Performance:", best_performing_perf[-1])
+        
+    save_data_to_csv("performance_vs_default.csv",
+                     ["Generation", "Population_Avg", "Fittest_Agent", "Best_Performer"],
+                     list(zip(generations, all_agents_avg, fittest_agent_perf, best_performing_perf)))
+
+    save_data_to_csv("parameter_trends.csv",
+                     ["Generation", "Rollouts", "Constant", "Max_Depth", "Weight", "Decay"],
+                     list(zip(generations, avg_rollouts, avg_constants, avg_depths, avg_weights, avg_decays)))
 
     plt.ioff()
     plt.show()
 
 if __name__ == "__main__":
-    live_simulation(iterations=1000)
+    live_simulation(iterations=10)
     max_fitness = 0
     max_agent = None
     for i in range(len(grid)):
