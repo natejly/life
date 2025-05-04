@@ -107,6 +107,6 @@ Population Mean vs Minimax
 Net score: -0.2222
 Wins: 46.96%
 
-## Results
+## Conclusion
 By running a cellular evolution simulation on MCTS Agents, we were able to evolve a population based on the default agent that performs better against a full Minimax search than the default by a 3.315% winrate and 0.1104 point margin
 
