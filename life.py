@@ -13,6 +13,13 @@ C = math.sqrt(2)
 grid_size = 8
 density = 0.5
 n_games = 100
+decay = 0.05
+epsilon = 0.1
+mutation_rate = 0.05
+time_limit = 0.005
+rollouts = 100
+max_depth = 4
+child_fitness = 0.0
 class MCTSAGENT():
     def __init__(self, time_limit=None, constant=None, rollouts=None, max_depth=None, weight=None, decay=None):
         self.time_limit = time_limit
@@ -36,13 +43,13 @@ class MCTSAGENT():
 
 def make_agent_dict(jitter=0.1):
     default= {
-        "time_limit": 0.005,
+        "time_limit": time_limit,
         "constant": C,
-        "rollouts": 100,
-        "max_depth": 4,
+        "rollouts": rollouts,
+        "max_depth": max_depth,
         "weight": 1,
         "decay": 1,
-        "fitness": 0.0
+        "fitness": child_fitness
     }
     agent = {}
     for key, val in default.items():
@@ -128,7 +135,7 @@ def run_elimination():
             cell = grid[i][j]
             # only check "fitness" if this is still an agent dict
             if isinstance(cell, dict):
-                grid[i][j]["fitness"] -= 0.05
+                grid[i][j]["fitness"] -= decay
     # remove any cells that have fitness less than 0
     
     for i in range(len(grid)):
@@ -140,7 +147,7 @@ def run_elimination():
                 grid[i][j] = 0
     
 
-def repopulate_grid(grid, ε=0.1, mutation_rate=0.1, best_performer=None):
+def repopulate_grid(grid, e=epsilon, mutation_rate=mutation_rate, best_performer=None):
     rows, cols = len(grid), len(grid[0])
     births = []
 
@@ -165,12 +172,12 @@ def repopulate_grid(grid, ε=0.1, mutation_rate=0.1, best_performer=None):
 
     # Second pass: actually spawn
     for i, j, neighbours in births:
-        if best_performer and random.random() >= ε:
+        if best_performer and random.random() >= e:
             # Use the best performing agent as parent when available
             parent = best_performer
         else:
             # Fall back to random or fittest neighbor
-            if random.random() < ε:
+            if random.random() < e:
                 parent = random.choice(neighbours)
             else:
                 parent = max(neighbours, key=lambda d: d.get("fitness", 0))
@@ -206,8 +213,8 @@ def live_simulation(iterations):
     fittest_agent_perf = []
     best_performing_perf = []
 
-    default_agent = MCTSAGENT(time_limit=0.005, constant=C, rollouts=100, 
-                             max_depth=4, weight=1, decay=1)
+    default_agent = MCTSAGENT(time_limit=time_limit, constant=C, rollouts=rollouts, 
+                             max_depth=max_depth, weight=1, decay=1)
 
     for gen in range(iterations):
         generations.append(gen + 1)
@@ -304,19 +311,14 @@ def live_simulation(iterations):
         ax_weight_decay.legend()
         ax_weight_decay.grid(True)
 
-        # 5) Repopulation
         repopulate_grid(grid, best_performer=best_agent)
 
-    
     plt.ioff()
     plt.show()
 
 if __name__ == "__main__":
-    # make your initial grid first
-    grid = make_grid(8, .5)
-    # then run the live sim
+    grid = make_grid(grid_size, density)
     live_simulation(iterations=100)
-    # print highet fitness agent
     max_fitness = 0
     max_agent = None
     for i in range(len(grid)):
