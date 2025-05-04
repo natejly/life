@@ -117,7 +117,6 @@ def _eval_matchup(args):
 
 def run_comp(max_workers=None):
     matchups = get_matchups(grid)
-
     # Build argument list with agent data
     args = []
     for (i1, j1), (i2, j2) in matchups:
@@ -132,8 +131,6 @@ def run_comp(max_workers=None):
             grid[i1][j1]["fitness"] += margin
             grid[i2][j2]["fitness"] -= margin
 
-
-        
 def run_elimination():
     # decay 
     for i in range(len(grid)):
@@ -147,7 +144,6 @@ def run_elimination():
     for i in range(len(grid)):
         for j in range(len(grid)):
             cell = grid[i][j]
-            # only check "fitness" if this is still an agent dict
             if isinstance(cell, dict) and cell.get("fitness", 0) < 0:
                 # print("removing cell at", i, j)
                 grid[i][j] = 0
@@ -157,33 +153,30 @@ def repopulate_grid(grid, e=epsilon, mutation_percent=mutation_percent, best_per
     rows, cols = len(grid), len(grid[0])
     births = []
 
-    # First pass: collect all dead cells with exactly 3 live neighbours
+    # Cells with 3 neighbors
     for i in range(rows):
         for j in range(cols):
             if grid[i][j] != 0:
                 continue
 
-            # gather live neighbours
             neighbours = []
             for di in (-1, 0, 1):
                 for dj in (-1, 0, 1):
                     if di == 0 and dj == 0:
                         continue
                     ni, nj = i + di, j + dj
+                    # check bounds
                     if 0 <= ni < rows and 0 <= nj < cols and isinstance(grid[ni][nj], dict):
                         neighbours.append(grid[ni][nj])
 
             if len(neighbours) == 3:
                 births.append((i, j, neighbours))
 
-    # Second pass: actually spawn
     for i, j, neighbours in births:
         if best_performer and random.random() >= e:
-            # Use the best performing agent as parent when available
             parent = best_performer
         else:
             parent = max(neighbours, key=lambda d: d.get("fitness", 0))
-
         # copy parameters with mutation
         child = {
             "time_limit": parent["time_limit"],
@@ -196,20 +189,17 @@ def repopulate_grid(grid, e=epsilon, mutation_percent=mutation_percent, best_per
         }
 
         grid[i][j] = child
-def _eval_agent_performance(args):
+def _against_base(args):
     agent_dict, default_agent_dict = args
-    # Create a temporary agent from the dict
     agent = MCTSAGENT(**{k: agent_dict[k] for k in agent_dict if k != "fitness"})
     default_agent = MCTSAGENT(**default_agent_dict)
-    
-    # Run the test game
     margin, winrate = test_game(game, n_games, agent.policy, default_agent.policy)
     current_winrate = winrate * 100
     
     return agent_dict, current_winrate
 
 
-def live_simulation(iterations):
+def run(iterations):
     plt.ion()
     global fig, axs
     fig, axs = plt.subplots(2, 3, figsize=(18, 10))
@@ -249,12 +239,11 @@ def live_simulation(iterations):
         best_agent = None
         
         with ProcessPoolExecutor(max_workers=None) as exe:
-            futures1 = {exe.submit(_eval_agent_performance, arg): arg for arg in args}
+            futures1 = {exe.submit(_against_base, arg): arg for arg in args}
             for fut1 in as_completed(futures1):
                 agent_dict, current_winrate = fut1.result()
                 all_winrates.append(current_winrate)
                 
-                # Track best performing agent
                 if current_winrate > best_winrate:
                     best_winrate = current_winrate
                     best_agent = agent_dict
@@ -264,12 +253,10 @@ def live_simulation(iterations):
     for gen in range(iterations):
         generations.append(gen + 1)
         
-        # 1) Run competition and elimination
         draw(grid, fig, title=f"Gen {gen+1}", ax_grid=ax_grid)
         run_comp()
         run_elimination()
          
-        # 2) Get parameter averages
         params = get_average_parameters(grid)
         avg_rollouts.append(params['rollouts'])
         avg_constants.append(params['constant'])
@@ -277,24 +264,19 @@ def live_simulation(iterations):
         avg_weights.append(params['weight'])
         avg_decays.append(params['decay'])
 
-        # 3) Performance comparison testing
         current_agents = [cell for row in grid for cell in row if isinstance(cell, dict)]
         if current_agents:
             fittest_agent = max(current_agents, key=lambda x: x.get("fitness", 0))
             
-            # Parallel testing of all agents
             all_winrates, best_winrate, best_agent = parallel_agent_testing(current_agents, default_agent)
             
-            # Test fittest agent (by fitness score) with more games
             fittest_agent_obj = MCTSAGENT(**{k: fittest_agent[k] for k in fittest_agent if k != "fitness"})
             _, fittest_winrate = test_game(game, n_games, fittest_agent_obj.policy, default_agent.policy)
             
-            # Store results
             all_agents_avg.append(sum(all_winrates)/len(all_winrates))
             fittest_agent_perf.append(fittest_winrate * 100)
             best_performing_perf.append(best_winrate)
             
-            # Update comparison plot
             ax_compare.clear()
             ax_compare.plot(generations, all_agents_avg, 'b-', label='Population Avg')
             ax_compare.plot(generations, fittest_agent_perf, 'r-', label='Fittest Agent')
@@ -346,15 +328,7 @@ def live_simulation(iterations):
                      list(zip(generations, avg_rollouts, avg_constants, avg_depths, avg_weights, avg_decays)))
 
     plt.ioff()
+    fig.savefig("final_simulation_plot.png", dpi=300, bbox_inches='tight')  
     plt.show()
 if __name__ == "__main__":
-    live_simulation(iterations=100)
-    max_fitness = 0
-    max_agent = None
-    for i in range(len(grid)):
-        for j in range(len(grid)):
-            cell = grid[i][j]
-            if isinstance(cell, dict) and cell.get("fitness", 0) > max_fitness:
-                max_fitness = cell["fitness"]
-                max_agent = cell
-    print("Highest fitness agent:", max_agent)
+    run(iterations=100)

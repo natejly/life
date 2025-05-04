@@ -1,5 +1,4 @@
 # Revised code from test_mcts.py from pset 4
-
 import mcts
 import time
 import math
@@ -42,8 +41,6 @@ def test_game(game, count, p1_policy_fxn, p2_policy_fxn):
 
     # print("NET: ", margin, "; WINS: ", wins, sep="")
     return margin, wins
-
-
 
 if __name__ == '__main__':
     start = time.time()
