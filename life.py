@@ -11,7 +11,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from helpers import print_results, save_data_to_csv
 import csv
 import os
-from kalah import Kalah
 
 
 random.seed(420)
