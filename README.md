@@ -1,6 +1,6 @@
+**[Download or view the simulation video](GOLF.mp4)**  
 # Game of Life for Feature Evolution (GOLF evolution)
-Evolving Monte Carlo Tree Search (MCTS) Agent Parameters
-[Download or view the simulation video](GOLF.mp4)  
+Evolving Monte Carlo Tree Search (MCTS) Agent Parameters  
 **Author:** Nate Ly  
 ## Running Program
 **Main Program** - runs simulation with live graphs and cell grid
